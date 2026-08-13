@@ -246,6 +246,19 @@ function clearError() {
   if (el) el.remove();
 }
 
+async function refreshCam() {
+  try {
+    const res = await fetch(`northeast-meta.json?q=${Date.now()}`);
+    if (!res.ok) throw new Error(`meta HTTP ${res.status}`);
+    const meta = await res.json();
+    const img = document.getElementById("camImage");
+    img.src = `northeast.jpg?v=${meta.fetchedAt}`;
+    document.getElementById("camTime").textContent = `Captured ${meta.timedate}`;
+  } catch (err) {
+    document.getElementById("camTime").textContent = "Webcam unavailable";
+  }
+}
+
 let currentPoints = null;
 
 async function refresh() {
@@ -277,7 +290,9 @@ function tick() {
 }
 
 refresh();
+refreshCam();
 setInterval(refresh, REFRESH_MS);
+setInterval(refreshCam, REFRESH_MS);
 setInterval(tick, 30 * 1000);
 
 if ("serviceWorker" in navigator) {

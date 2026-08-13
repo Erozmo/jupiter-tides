@@ -1,0 +1,59 @@
+name: Update Northeast View webcam
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest Northeast View snapshot
+        run: |
+          set -e
+          JSON=$(curl -sf -A "Mozilla/5.0 (jupiter-tides personal app)" \
+            "https://video-monitoring.com/beachcams/jupiter/latest.json?q=$(date +%s)")
+          echo "$JSON" > latest_raw.json
+
+          python3 - <<'PY'
+          import json, urllib.request, time
+
+          with open("latest_raw.json") as f:
+              data = json.load(f)
+
+          cam = data["s32"]
+          path = cam["mr"]
+          url = "https://video-monitoring.com/beachcams/jupiter/" + path
+
+          req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (jupiter-tides personal app)"})
+          with urllib.request.urlopen(req, timeout=20) as resp, open("northeast.jpg", "wb") as out:
+              out.write(resp.read())
+
+          meta = {
+              "timedate": cam["timedate"],
+              "sourceTimestamp": cam["timestamp"],
+              "fetchedAt": int(time.time()),
+          }
+          with open("northeast-meta.json", "w") as f:
+              json.dump(meta, f)
+          PY
+
+          rm -f latest_raw.json
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add northeast.jpg northeast-meta.json
+          if git diff --cached --quiet; then
+            echo "No change"
+          else
+            git commit -m "Update Northeast View webcam snapshot"
+            git push
+          fi
