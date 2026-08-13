@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Jupiter Tides</title>
+<meta name="theme-color" content="#062a45">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tides">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app">
+  <header>
+    <h1>Jupiter Inlet, FL</h1>
+    <p class="subtitle">Tide conditions</p>
+  </header>
+
+  <section class="card current-card">
+    <div class="label">Current tide</div>
+    <div id="currentHeight" class="height">&hellip;</div>
+    <div id="currentTrend" class="trend"></div>
+  </section>
+
+  <section class="card next-card">
+    <div class="label" id="nextLabel">Next tide</div>
+    <div id="nextType" class="next-type">&hellip;</div>
+    <div id="nextTime" class="next-time"></div>
+    <div id="countdown" class="countdown"></div>
+  </section>
+
+  <section class="wave-wrap">
+    <svg id="waveChart" viewBox="0 0 400 140" preserveAspectRatio="none"></svg>
+  </section>
+
+  <footer>
+    <div id="updated" class="updated"></div>
+    <div class="source">Data: NOAA Tides &amp; Currents, Station 8722495</div>
+  </footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
