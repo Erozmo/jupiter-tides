@@ -167,10 +167,10 @@ function drawWave(points, now, currentHeight) {
 
   const x0 = samples[0].time.getTime();
   const x1 = samples[samples.length - 1].time.getTime();
-  const W = 400, H = 140;
+  const W = 400, PLOT_H = 118, AXIS_Y = 136, H = 168;
 
   const xScale = (t) => ((t - x0) / (x1 - x0)) * W;
-  const yScale = (v) => H - ((v - yMin) / (yMax - yMin)) * H;
+  const yScale = (v) => PLOT_H - ((v - yMin) / (yMax - yMin)) * PLOT_H;
 
   let path = "";
   samples.forEach((s, i) => {
@@ -179,10 +179,12 @@ function drawWave(points, now, currentHeight) {
     path += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
   });
 
-  const areaPath = path + `L${W},${H} L0,${H} Z`;
+  const areaPath = path + `L${W},${PLOT_H} L0,${PLOT_H} Z`;
 
   const nowX = xScale(now.getTime());
   const nowY = currentHeight !== null ? yScale(currentHeight) : null;
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 
   let svgContent = `
     <defs>
@@ -195,15 +197,34 @@ function drawWave(points, now, currentHeight) {
     <path d="${path.trim()}" fill="none" stroke="#bfe3ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
   `;
 
+  // hour axis ticks
+  const tickStartHour = 3;
+  const axisStart = new Date(dayStart);
+  axisStart.setHours(tickStartHour, 0, 0, 0);
+  while (axisStart.getTime() > x0) axisStart.setHours(axisStart.getHours() - 3);
+  for (let t = new Date(axisStart); t.getTime() <= x1; t.setHours(t.getHours() + 3)) {
+    const tt = t.getTime();
+    if (tt < x0 || tt > x1) continue;
+    const x = xScale(tt);
+    const label = t.toLocaleTimeString([], { hour: "numeric" }).replace(" ", "").toLowerCase();
+    svgContent += `<line x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="${PLOT_H}" stroke="#ffffff" stroke-width="1" opacity="0.06"/>`;
+    svgContent += `<text x="${x.toFixed(1)}" y="${AXIS_Y}" font-size="10" fill="#8fb9d4" text-anchor="middle">${label}</text>`;
+  }
+
   relevant.forEach((p) => {
     if (p.time.getTime() < x0 || p.time.getTime() > x1) return;
     const x = xScale(p.time.getTime());
     const y = yScale(p.value);
     svgContent += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#ffffff" opacity="0.85"/>`;
+    const isHigh = p.type === "H";
+    const labelY = isHigh ? Math.max(y - 10, 10) : Math.min(y + 18, PLOT_H - 2);
+    const timeLabel = p.time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const anchor = x < 25 ? "start" : x > W - 25 ? "end" : "middle";
+    svgContent += `<text x="${x.toFixed(1)}" y="${labelY.toFixed(1)}" font-size="10" font-weight="600" fill="#eaf6ff" text-anchor="${anchor}">${timeLabel}</text>`;
   });
 
   if (nowY !== null) {
-    svgContent += `<line x1="${nowX.toFixed(1)}" y1="0" x2="${nowX.toFixed(1)}" y2="${H}" stroke="#ffb347" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.7"/>`;
+    svgContent += `<line x1="${nowX.toFixed(1)}" y1="0" x2="${nowX.toFixed(1)}" y2="${PLOT_H}" stroke="#ffb347" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.7"/>`;
     svgContent += `<circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="5" fill="#ffb347"/>`;
   }
 
