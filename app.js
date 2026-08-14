@@ -101,16 +101,13 @@ function render(points, savedAt) {
   const { prev, next } = findSurrounding(points, now);
   const height = interpolateHeight(prev, next, now);
 
-  const heightEl = document.getElementById("currentHeight");
   const trendEl = document.getElementById("currentTrend");
   if (height !== null) {
-    heightEl.textContent = `${height.toFixed(2)} ft`;
     const rising = next.value > prev.value;
     trendEl.innerHTML = rising
       ? `<span class="arrow">&#9650;</span> Rising`
       : `<span class="arrow">&#9660;</span> Falling`;
   } else {
-    heightEl.textContent = "--";
     trendEl.textContent = "";
   }
 
@@ -134,26 +131,24 @@ function render(points, savedAt) {
   drawWave(points, now, height);
 }
 
+const HALF_SPAN_MS = 9 * 60 * 60 * 1000;
+
 function drawWave(points, now, currentHeight) {
   const svg = document.getElementById("waveChart");
-  const dayStart = new Date(now);
-  dayStart.setHours(0, 0, 0, 0);
-  const windowStart = new Date(dayStart);
-  windowStart.setHours(windowStart.getHours() - 3);
-  const windowEnd = new Date(dayStart);
-  windowEnd.setHours(windowEnd.getHours() + 27);
+  const windowStart = new Date(now.getTime() - HALF_SPAN_MS);
+  const windowEnd = new Date(now.getTime() + HALF_SPAN_MS);
 
   const relevant = points.filter((p) => p.time >= windowStart && p.time <= windowEnd);
-  if (relevant.length < 2) {
-    svg.innerHTML = "";
-    return;
-  }
+
+  const x0 = windowStart.getTime();
+  const x1 = windowEnd.getTime();
+  const W = 400, PLOT_H = 118, AXIS_Y = 136, H = 168;
 
   const samples = [];
   const stepMs = 15 * 60 * 1000;
-  for (let t = relevant[0].time.getTime(); t <= relevant[relevant.length - 1].time.getTime(); t += stepMs) {
+  for (let t = x0; t <= x1; t += stepMs) {
     const sampleTime = new Date(t);
-    const { prev, next } = findSurrounding(relevant, sampleTime);
+    const { prev, next } = findSurrounding(points, sampleTime);
     const h = interpolateHeight(prev, next, sampleTime);
     if (h !== null) samples.push({ time: sampleTime, value: h });
   }
@@ -164,10 +159,6 @@ function drawWave(points, now, currentHeight) {
   const maxV = Math.max(...values);
   const pad = (maxV - minV) * 0.15 || 1;
   const yMin = minV - pad, yMax = maxV + pad;
-
-  const x0 = samples[0].time.getTime();
-  const x1 = samples[samples.length - 1].time.getTime();
-  const W = 400, PLOT_H = 118, AXIS_Y = 136, H = 168;
 
   const xScale = (t) => ((t - x0) / (x1 - x0)) * W;
   const yScale = (v) => PLOT_H - ((v - yMin) / (yMax - yMin)) * PLOT_H;
@@ -197,11 +188,10 @@ function drawWave(points, now, currentHeight) {
     <path d="${path.trim()}" fill="none" stroke="#bfe3ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
   `;
 
-  // hour axis ticks
-  const tickStartHour = 3;
-  const axisStart = new Date(dayStart);
-  axisStart.setHours(tickStartHour, 0, 0, 0);
-  while (axisStart.getTime() > x0) axisStart.setHours(axisStart.getHours() - 3);
+  // hour axis ticks, aligned to 3-hour clock boundaries
+  const axisStart = new Date(windowStart);
+  axisStart.setMinutes(0, 0, 0);
+  axisStart.setHours(axisStart.getHours() - (axisStart.getHours() % 3));
   for (let t = new Date(axisStart); t.getTime() <= x1; t.setHours(t.getHours() + 3)) {
     const tt = t.getTime();
     if (tt < x0 || tt > x1) continue;
@@ -285,7 +275,14 @@ function tick() {
     const { prev, next } = findSurrounding(currentPoints, now);
     const height = interpolateHeight(prev, next, now);
     document.getElementById("countdown").textContent = next ? fmtCountdown(next.time - now) : "";
-    if (height !== null) document.getElementById("currentHeight").textContent = `${height.toFixed(2)} ft`;
+    if (height !== null) {
+      const trendEl = document.getElementById("currentTrend");
+      const rising = next.value > prev.value;
+      trendEl.innerHTML = rising
+        ? `<span class="arrow">&#9650;</span> Rising`
+        : `<span class="arrow">&#9660;</span> Falling`;
+    }
+    drawWave(currentPoints, now, height);
   }
 }
 
